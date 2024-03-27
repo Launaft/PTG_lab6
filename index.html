@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title></title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    </head>
+    <body>
+        <div id="container"></div>
+
+        <!-- ==============================VertexShader======================================= -->
+        <script id="vertexShader" type="x-shader/x-vertex">
+            attribute float displacement;
+            attribute vec3 tangent;
+
+            uniform vec3 lightPosition;
+            uniform float amplitude;
+
+            varying vec3 vNormal;
+            //varying vec3 lightDir;
+            varying vec2 vertexUV;
+            varying vec3 fragPos;
+            varying vec3 lightVector;
+            varying mat3 tbn;
+
+            void main()
+            {
+                vertexUV = uv;
+
+                vec3 mvPos = (modelMatrix * vec4(position, 1.0)).xyz;
+                vec3 norm = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+                vec3 tang = normalize((modelMatrix * vec4(tangent, 0.0)).xyz);
+                vec3 bitang = normalize((modelMatrix * vec4(cross(norm, tang), 0.0)).xyz);
+                tbn = mat3(tang, bitang, norm);
+
+                lightVector = normalize(lightPosition - mvPos);
+
+                //lightDir = lightPosition - vmPos;
+                //lightDir = normalize(lightDir);
+
+                //vec3 newPosition = position + normal * vec3(displacement * amplitude);
+                
+                vNormal = normalize(vec3(modelMatrix * vec4(normal, 1.0)));
+                vNormal.y = 0.0;
+
+                fragPos = vec3(modelMatrix * vec4(position, 1.0));
+
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        </script>
+        <!-- ============================FragmentShader======================================= -->
+        <script id="fragmentShader" type="x-shader/x-fragment">
+            //uniform vec4 color;
+            uniform vec3 lightColor;
+            uniform vec3 lightPosition;
+            uniform vec3 ambientColor;
+            uniform sampler2D dayTexture;
+            uniform sampler2D nightTexture;
+            uniform sampler2D normalMap;
+
+            varying vec3 vNormal;
+            //varying vec3 lightDir;
+            varying vec2 vertexUV;
+            varying vec3 fragPos;
+            varying vec3 lightVector;
+            varying mat3 tbn;
+
+            void main()
+            {
+                vec3 totalDiffuse = vec3(0.0);
+                vec3 normalMapValue = 2.0 * texture2D(normalMap, vertexUV).rgb - 1.0;
+                //normalMapValue.r = -normalMapValue.r;
+                vec3 unitNormal = normalize(normalMapValue);
+                unitNormal = unitNormal * tbn;
+
+                float nDotl = dot(unitNormal, -lightVector);
+                float brightness = max(nDotl, 0.4);
+
+                /*vec3 dayColor = texture2D(dayTexture, vertexUV).rgb;
+                vec3 nightColor = texture2D(nightTexture, vertexUV).rgb;*/
+
+                vec4 dayColor = texture2D(dayTexture, vertexUV);
+                vec4 nightColor = texture2D(nightTexture, vertexUV);
+
+                vec3 lightDir = lightPosition - fragPos;
+                lightDir = normalize(lightDir);
+
+                float k = max(0.0, dot(vNormal, lightDir));
+                vec4 color = (dayColor * k) + (nightColor * (1.0 - k));
+                totalDiffuse = ambientColor + (brightness * lightColor);
+
+                if (k > 0.0)
+                    gl_FragColor = vec4(vec3(totalDiffuse), 1.0) * color;
+                    //gl_FragColor = vec4(color, 1.0);
+                else
+                    gl_FragColor = vec4(vec3(totalDiffuse), 1.0) * nightColor;
+                    //gl_FragColor = vec4(nightColor, 1.0);
+            }
+        </script>
+        <!--================================================================================= -->
+        <!--подключение скрипта с графической программой-->
+        <script type="module" src="js/main.js"></script>
+    </body>
+</html>
