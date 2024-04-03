@@ -37,7 +37,7 @@
                 //lightDir = lightPosition - vmPos;
                 //lightDir = normalize(lightDir);
 
-                //vec3 newPosition = position + normal * vec3(displacement * amplitude);
+                vec3 newPosition = position + normal * vec3(displacement * amplitude);
                 
                 vNormal = normalize(vec3(modelMatrix * vec4(normal, 1.0)));
                 vNormal.y = 0.0;
